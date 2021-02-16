@@ -259,6 +259,34 @@ namespace cubiomes {
 		return result;
 	}
 
+	napi_value getLower48(napi_env env, napi_callback_info info){
+		size_t argc = 1;
+		napi_value args[argc];
+
+		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+		int64_t lower48 = strtoull(getString(env, args[0]), nullptr, 10) << 16;
+
+		napi_value result;
+		napi_create_string_utf8(env, std::to_string(lower48).c_str(), NAPI_AUTO_LENGTH, &result);
+
+		return result;
+	}
+
+	napi_value getUpper16(napi_env env, napi_callback_info info){
+		size_t argc = 1;
+		napi_value args[argc];
+
+		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+		int64_t upper16 = strtoull(getString(env, args[0]), nullptr, 10) >> 48;
+
+		napi_value result;
+		napi_create_string_utf8(env, std::to_string(upper16).c_str(), NAPI_AUTO_LENGTH, &result);
+
+		return result;
+	}
+
 	napi_status addFunction(napi_env env, napi_value exports, const char *name, napi_callback cb){
 		napi_status status;
 		napi_value fn;
@@ -305,6 +333,12 @@ namespace cubiomes {
 		if (status != napi_ok) return nullptr;
 
 		status = addFunction(env, exports, "isOceanic", _isOceanic);
+		if (status != napi_ok) return nullptr;
+
+		status = addFunction(env, exports, "getLower48", getLower48);
+		if (status != napi_ok) return nullptr;
+
+		status = addFunction(env, exports, "getUpper16", getUpper16);
 		if (status != napi_ok) return nullptr;
 
 		return exports;

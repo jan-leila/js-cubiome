@@ -29,3 +29,7 @@ function findJungleEdge(g){
 let g = cubiomes.createGenerator("1.16");
 console.log(originVillage(g));
 console.log(findJungleEdge(g));
+console.log(cubiomes.getLower48("18446462598732840960"));
+console.log(cubiomes.getUpper16("18446462598732840960"));
+console.log(cubiomes.getLower48("281474976710655"));
+console.log(cubiomes.getUpper16("281474976710655"));
