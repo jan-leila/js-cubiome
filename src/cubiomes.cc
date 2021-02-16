@@ -69,13 +69,13 @@ namespace cubiomes {
 
 		MCversion version = getVersion(str_version);
 
-		LayerStack g;
-		setupGenerator(&g, version);
+		LayerStack* g = new LayerStack();
+		setupGenerator(g, version);
 
 		// Wrap the pointer so js can hold it
 		napi_value result;
 		napi_create_object(env, &result);
-		napi_wrap(env, result, &g, nullptr, nullptr, nullptr);
+		napi_wrap(env, result, g, nullptr, nullptr, nullptr);
 
 		// Make sure that the generator doesnt get garbage collected
 		napi_create_reference(env, result, 1, nullptr);
@@ -83,11 +83,11 @@ namespace cubiomes {
 		return result;
 	}
 
-	LayerStack* getGenerator(napi_env env, napi_value in){
+	LayerStack& getGenerator(napi_env env, napi_value in){
 		void *g_ptr;
 		napi_unwrap(env, in, &g_ptr);
 
-		LayerStack *g = static_cast<LayerStack *>(g_ptr);
+		LayerStack &g = *static_cast<LayerStack *>(g_ptr);
 
 		return g;
 	}
@@ -200,9 +200,10 @@ namespace cubiomes {
 
 		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
+		LayerStack& g = getGenerator(env, args[0]);
 		int64_t seed = strtoull(getString(env, args[1]), nullptr, 10);
 
-		applySeed(getGenerator(env, args[0]), seed);
+		applySeed(&g, seed);
 
 		return nullptr;
 	}
@@ -215,12 +216,12 @@ namespace cubiomes {
 
 		int structureType = getStructureConfig(getString(env, args[0])).structType;
 		int mcversion = getVersion(getString(env, args[1]));
-		LayerStack* g = getGenerator(env, args[2]);
+		LayerStack& g = getGenerator(env, args[2]);
 		int64_t seed = strtoull(getString(env, args[3]), nullptr, 10);
 		int blockX = (int) getInt(env, args[4]);
 		int blockZ = (int) getInt(env, args[5]);
 
-		int viable = isViableStructurePos(structureType, mcversion, g, seed, blockX, blockZ);
+		int viable = isViableStructurePos(structureType, mcversion, &g, seed, blockX, blockZ);
 
 		napi_value result;
 		napi_create_int64(env, viable, &result);
@@ -234,11 +235,8 @@ namespace cubiomes {
 
 		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
-		LayerStack *g = getGenerator(env, args[0]);
-		int blockX = (int) getInt(env, args[1]);
-		int blockZ = (int) getInt(env, args[2]);
-
-		int biome = getBiomeAtPos(g, { blockX, blockZ });
+		LayerStack& g = getGenerator(env, args[0]);
+		int biome = getBiomeAtPos(&g, { getInt(env, args[1]), getInt(env, args[2]) });
 
 		napi_value result;
 		napi_create_int64(env, biome, &result);
