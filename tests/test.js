@@ -1,35 +1,54 @@
 const cubiomes = require('../src/cubiomes');
 
 function originVillage(g){
-	for(lower = 0; lower < 0x1000000000000; lower++){
-		lower_str = lower.toString();
-		let { valid, x, z } = cubiomes.getStructurePos("village", lower_str, 0, 0);
-		for(let upper = 0; upper < 0x10000; upper++){
-			let seed = upper.toString() + lower_str;
-			if (cubiomes.isViableStructurePos("village", "1.16", g, seed, x, z)){
-				return seed;
+	let output = false;
+
+	let one = cubiomes.createInt('1');
+	let lowermax = cubiomes.shiftLeft(one, 48);
+	let uppermax = cubiomes.shiftLeft(one, 64);
+	cubiomes.destroyInt(one);
+
+	let lower = cubiomes.createInt('1');
+	while(cubiomes.lteq(lower, lowermax) && output === false){
+		let { valid, x, z } = cubiomes.getStructurePos("village", lower, 0, 0);
+
+		let upper = cubiomes.createInt('0');
+		while(cubiomes.lteq(upper, uppermax)  && output === false){
+			let shifted = cubiomes.shiftLeft(upper, 48);
+			let seed = cubiomes.add(lower, shifted);
+			cubiomes.destroyInt(shifted);
+			if(cubiomes.isViableStructurePos("village", "1.16", g, seed, x, z)){
+				output = cubiomes.intToString(seed);
 			}
+			cubiomes.destroyInt(seed);
+			cubiomes.increment(upper);
 		}
+		cubiomes.destroyInt(upper);
+		cubiomes.increment(lower);
 	}
+	cubiomes.destroyInt(lower);
+	cubiomes.destroyInt(lowermax);
+	cubiomes.destroyInt(uppermax);
+
+	return output;
 }
 
 function findJungleEdge(g){
-	for (seed = 0; seed < 0x1000000000000; seed++){
-		// console.log("test1")
-		cubiomes.applySeed(g, seed.toString());
-		// console.log("test2")
-		let biomeID = cubiomes.getBiomeAtPos(g, 0, 0);
-		// console.log("test3")
+	let output = false;
+	let seed = cubiomes.createInt('0');
+	while(output === false){
+		cubiomes.increment(seed);
+		cubiomes.applySeed(g, seed);
+		biomeID = cubiomes.getBiomeAtPos(g, 0, 0);
 		if(biomeID == 23){
-			return seed;
+			output = cubiomes.intToString(seed);
 		}
 	}
+	cubiomes.destroyInt(seed);
+
+	return output;
 }
 
 let g = cubiomes.createGenerator("1.16");
 console.log(originVillage(g));
 console.log(findJungleEdge(g));
-console.log(cubiomes.getLower48("18446462598732840960"));
-console.log(cubiomes.getUpper16("18446462598732840960"));
-console.log(cubiomes.getLower48("281474976710655"));
-console.log(cubiomes.getUpper16("281474976710655"));

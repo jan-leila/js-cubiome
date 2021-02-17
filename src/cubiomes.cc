@@ -41,7 +41,9 @@ namespace cubiomes {
 		return FEATURE_CONFIG;
 	}
 
-	char* getString(napi_env env, napi_value in){
+	// Short hand function for getting a string from args
+	char *getString(napi_env env, napi_value in)
+	{
 		size_t str_size;
 		size_t str_size_read;
 
@@ -53,12 +55,94 @@ namespace cubiomes {
 		return str;
 	}
 
-	int64_t getInt(napi_env env, napi_value in){
+	// Short hand function for getting a number from args
+	int64_t getNumberInt(napi_env env, napi_value in){
 		int64_t result;
 		napi_get_value_int64(env, in, &result);
 		return result;
 	}
 
+	// Function to get back an int from the heap
+	int64_t& getInt(napi_env env, napi_value in){
+		void *int_ptr;
+		napi_unwrap(env, in, &int_ptr);
+
+		int64_t &value = *static_cast<int64_t *>(int_ptr);
+
+		return value;
+	}
+
+	napi_value _createInt(napi_env env, napi_value in){
+		int64_t* value = new int64_t;
+		*value = strtoull(getString(env, in), nullptr, 10);
+
+		napi_value result;
+		napi_create_object(env, &result);
+		napi_wrap(env, result, value, nullptr, nullptr, nullptr);
+
+		return result;
+	}
+
+	napi_value _createInt(napi_env env, int64_t in){
+		int64_t* value = new int64_t;
+		*value = in;
+
+		napi_value result;
+		napi_create_object(env, &result);
+		napi_wrap(env, result, value, nullptr, nullptr, nullptr);
+
+		return result;
+	}
+
+	// Function to create an int on the heap
+	napi_value createInt(napi_env env, napi_callback_info info){
+		size_t argc = 1;
+		napi_value args[argc];
+
+		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+		return _createInt(env, args[0]);
+	}
+
+	// Function to get the value of an int on the heap as a string
+	napi_value intToString(napi_env env, napi_callback_info info){
+		size_t argc = 1;
+		napi_value args[argc];
+
+		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+		int64_t &value = getInt(env, args[0]);
+
+		napi_value result;
+		napi_create_string_utf8(env, std::to_string(value).c_str(), NAPI_AUTO_LENGTH, &result);
+
+		return result;
+	}
+
+	// Function to destroy a created on the heap
+	napi_value destroyInt(napi_env env, napi_callback_info info){
+		size_t argc = 1;
+		napi_value args[argc];
+
+		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+		int64_t &value = getInt(env, args[0]);
+		delete &value;
+
+		return nullptr;
+	}
+
+	// Function to get back a genorator from the heap
+	LayerStack& getGenerator(napi_env env, napi_value in){
+		void *g_ptr;
+		napi_unwrap(env, in, &g_ptr);
+
+		LayerStack &g = *static_cast<LayerStack *>(g_ptr);
+
+		return g;
+	}
+
+	// Function to create a genorator on the heap
 	napi_value createGenerator(napi_env env, napi_callback_info info){
 		size_t argc = 1;
 		napi_value args[argc];
@@ -83,15 +167,7 @@ namespace cubiomes {
 		return result;
 	}
 
-	LayerStack& getGenerator(napi_env env, napi_value in){
-		void *g_ptr;
-		napi_unwrap(env, in, &g_ptr);
-
-		LayerStack &g = *static_cast<LayerStack *>(g_ptr);
-
-		return g;
-	}
-
+	// Function to get the position of a structure in a seed
 	napi_value getStructurePos(napi_env env, napi_callback_info info){
 		size_t argc = 4;
 		napi_value args[argc];
@@ -99,9 +175,9 @@ namespace cubiomes {
 		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
 		const StructureConfig config = getStructureConfig(getString(env, args[0]));
-		uint64_t seed = strtoull(getString(env, args[1]), nullptr, 10);
-		int64_t regX = getInt(env, args[2]);
-		int64_t regZ = getInt(env, args[3]);
+		uint64_t seed = getInt(env, args[1]);
+		int64_t regX = getNumberInt(env, args[2]);
+		int64_t regZ = getNumberInt(env, args[3]);
 
 		int valid;
 		Pos p = getStructurePos(config, seed, regX, regZ, &valid);
@@ -128,7 +204,7 @@ namespace cubiomes {
 		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
 		int64_t seed = getInt(env, args[0]);
-		const int bits = getInt(env, args[1]);
+		const int bits = getNumberInt(env, args[1]);
 
 		napi_value result;
 		napi_create_int64(env, next(&seed, bits), &result);
@@ -136,15 +212,14 @@ namespace cubiomes {
 		return result;
 	}
 
-	napi_value _nextInt(napi_env env, napi_callback_info info)
-	{
+	napi_value _nextInt(napi_env env, napi_callback_info info){
 		size_t argc = 2;
 		napi_value args[argc];
 
 		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
-		int64_t seed = strtoull(getString(env, args[0]), nullptr, 10);
-		const int n = getInt(env, args[1]);
+		int64_t seed = getInt(env, args[0]);
+		const int n = getNumberInt(env, args[1]);
 
 		napi_value result;
 		napi_create_int64(env, nextInt(&seed, n), &result);
@@ -158,7 +233,7 @@ namespace cubiomes {
 
 		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
-		int64_t seed = strtoull(getString(env, args[0]), nullptr, 10);
+		int64_t seed = getInt(env, args[0]);
 
 		napi_value result;
 		napi_create_int64(env, nextLong(&seed), &result);
@@ -172,7 +247,7 @@ namespace cubiomes {
 
 		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
-		int64_t seed = strtoull(getString(env, args[0]), nullptr, 10);
+		int64_t seed = getInt(env, args[0]);
 
 		napi_value result;
 		napi_create_double(env, (double) nextFloat(&seed), &result);
@@ -186,7 +261,7 @@ namespace cubiomes {
 
 		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
-		int64_t seed = strtoull(getString(env, args[0]), nullptr, 10);
+		int64_t seed = getInt(env, args[0]);
 
 		napi_value result;
 		napi_create_double(env, nextDouble(&seed), &result);
@@ -201,7 +276,7 @@ namespace cubiomes {
 		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
 		LayerStack& g = getGenerator(env, args[0]);
-		int64_t seed = strtoull(getString(env, args[1]), nullptr, 10);
+		int64_t seed = getInt(env, args[1]);
 
 		applySeed(&g, seed);
 
@@ -217,9 +292,9 @@ namespace cubiomes {
 		int structureType = getStructureConfig(getString(env, args[0])).structType;
 		int mcversion = getVersion(getString(env, args[1]));
 		LayerStack& g = getGenerator(env, args[2]);
-		int64_t seed = strtoull(getString(env, args[3]), nullptr, 10);
-		int blockX = (int) getInt(env, args[4]);
-		int blockZ = (int) getInt(env, args[5]);
+		int64_t seed = getInt(env, args[3]);
+		int blockX = (int) getNumberInt(env, args[4]);
+		int blockZ = (int)getNumberInt(env, args[5]);
 
 		int viable = isViableStructurePos(structureType, mcversion, &g, seed, blockX, blockZ);
 
@@ -236,7 +311,7 @@ namespace cubiomes {
 		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
 		LayerStack& g = getGenerator(env, args[0]);
-		int biome = getBiomeAtPos(&g, { getInt(env, args[1]), getInt(env, args[2]) });
+		int biome = getBiomeAtPos(&g, {getNumberInt(env, args[1]), getNumberInt(env, args[2]) });
 
 		napi_value result;
 		napi_create_int64(env, biome, &result);
@@ -250,7 +325,7 @@ namespace cubiomes {
 
 		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
-		int id = (int) getInt(env, args[0]);
+		int id = (int) getNumberInt(env, args[0]);
 		int oceanic = isOceanic(id);
 
 		napi_value result;
@@ -259,31 +334,204 @@ namespace cubiomes {
 		return result;
 	}
 
-	napi_value getLower48(napi_env env, napi_callback_info info){
+	napi_value copy(napi_env env, napi_callback_info info){
 		size_t argc = 1;
 		napi_value args[argc];
 
 		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
-		int64_t lower48 = strtoull(getString(env, args[0]), nullptr, 10) << 16;
+		int64_t value = getInt(env, args[0]);
+
+		return _createInt(env, value);
+	}
+
+	napi_value add(napi_env env, napi_callback_info info){
+		size_t argc = 2;
+		napi_value args[argc];
+
+		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+		int64_t a = getInt(env, args[0]);
+		int64_t b = getInt(env, args[1]);
+
+		return _createInt(env, a + b);
+	}
+
+	napi_value increment(napi_env env, napi_callback_info info){
+		size_t argc = 1;
+		napi_value args[argc];
+
+		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+		int64_t &a = getInt(env, args[0]);
+		a++;
+
+		return nullptr;
+	}
+
+	napi_value mod(napi_env env, napi_callback_info info){
+		size_t argc = 2;
+		napi_value args[argc];
+
+		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+		int64_t a = getInt(env, args[0]);
+		int64_t b = getNumberInt(env, args[1]);
 
 		napi_value result;
-		napi_create_string_utf8(env, std::to_string(lower48).c_str(), NAPI_AUTO_LENGTH, &result);
+		napi_create_int64(env, a % b, &result);
 
 		return result;
 	}
 
-	napi_value getUpper16(napi_env env, napi_callback_info info){
-		size_t argc = 1;
+	napi_value _xor(napi_env env, napi_callback_info info){
+		size_t argc = 2;
 		napi_value args[argc];
 
 		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
-		int64_t upper16 = strtoull(getString(env, args[0]), nullptr, 10) >> 48;
+		int64_t a = getInt(env, args[0]);
+		int64_t b = getInt(env, args[1]);
+
+		return _createInt(env, a ^ b);
+	}
+
+	napi_value shiftLeft(napi_env env, napi_callback_info info){
+		size_t argc = 2;
+		napi_value args[argc];
+
+		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+		int64_t value = getInt(env, args[0]);
+		int64_t bits = getNumberInt(env, args[1]);
+
+		return _createInt(env, value << bits);
+	}
+
+	napi_value shiftRight(napi_env env, napi_callback_info info){
+		size_t argc = 2;
+		napi_value args[argc];
+
+		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+		int64_t value = getInt(env, args[0]);
+		int64_t bits = getNumberInt(env, args[1]);
+
+		return _createInt(env, value >> bits);
+	}
+
+	napi_value eq(napi_env env, napi_callback_info info)
+	{
+		size_t argc = 2;
+		napi_value args[argc];
+
+		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+		int64_t a = getInt(env, args[0]);
+		int64_t b = getInt(env, args[1]);
 
 		napi_value result;
-		napi_create_string_utf8(env, std::to_string(upper16).c_str(), NAPI_AUTO_LENGTH, &result);
 
+		if (a == b)
+		{
+			napi_create_int32(env, 1, &result);
+		}
+		else
+		{
+			napi_create_int32(env, 0, &result);
+		}
+		return result;
+	}
+
+	napi_value lt(napi_env env, napi_callback_info info)
+	{
+		size_t argc = 2;
+		napi_value args[argc];
+
+		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+		int64_t a = getInt(env, args[0]);
+		int64_t b = getInt(env, args[1]);
+
+		napi_value result;
+
+		if (a < b)
+		{
+			napi_create_int32(env, 1, &result);
+		}
+		else
+		{
+			napi_create_int32(env, 0, &result);
+		}
+		return result;
+	}
+
+	napi_value gt(napi_env env, napi_callback_info info)
+	{
+		size_t argc = 2;
+		napi_value args[argc];
+
+		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+		int64_t a = getInt(env, args[0]);
+		int64_t b = getInt(env, args[1]);
+
+		napi_value result;
+
+		if (a > b)
+		{
+			napi_create_int32(env, 1, &result);
+		}
+		else
+		{
+			napi_create_int32(env, 0, &result);
+		}
+		return result;
+	}
+
+	napi_value lteq(napi_env env, napi_callback_info info)
+	{
+		size_t argc = 2;
+		napi_value args[argc];
+
+		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+		int64_t a = getInt(env, args[0]);
+		int64_t b = getInt(env, args[1]);
+
+		napi_value result;
+
+		if (a <= b)
+		{
+			napi_create_int32(env, 1, &result);
+		}
+		else
+		{
+			napi_create_int32(env, 0, &result);
+		}
+		return result;
+	}
+
+	napi_value gteq(napi_env env, napi_callback_info info)
+	{
+		size_t argc = 2;
+		napi_value args[argc];
+
+		napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+		int64_t a = getInt(env, args[0]);
+		int64_t b = getInt(env, args[1]);
+
+		napi_value result;
+
+		if (a >= b)
+		{
+			napi_create_int32(env, 1, &result);
+		}
+		else
+		{
+			napi_create_int32(env, 0, &result);
+		}
 		return result;
 	}
 
@@ -301,6 +549,15 @@ namespace cubiomes {
 		initBiomes();
 
 		napi_status status;
+
+		status = addFunction(env, exports, "createInt", createInt);
+		if (status != napi_ok) return nullptr;
+
+		status = addFunction(env, exports, "intToString", intToString);
+		if (status != napi_ok) return nullptr;
+
+		status = addFunction(env, exports, "destroyInt", destroyInt);
+		if (status != napi_ok) return nullptr;
 
 		status = addFunction(env, exports, "createGenerator", createGenerator);
 		if (status != napi_ok) return nullptr;
@@ -335,10 +592,40 @@ namespace cubiomes {
 		status = addFunction(env, exports, "isOceanic", _isOceanic);
 		if (status != napi_ok) return nullptr;
 
-		status = addFunction(env, exports, "getLower48", getLower48);
+		status = addFunction(env, exports, "copy", copy);
 		if (status != napi_ok) return nullptr;
 
-		status = addFunction(env, exports, "getUpper16", getUpper16);
+		status = addFunction(env, exports, "add", add);
+		if (status != napi_ok) return nullptr;
+		
+		status = addFunction(env, exports, "increment", increment);
+		if (status != napi_ok) return nullptr;
+
+		status = addFunction(env, exports, "mod", mod);
+		if (status != napi_ok) return nullptr;
+
+		status = addFunction(env, exports, "xor", _xor);
+		if (status != napi_ok) return nullptr;
+
+		status = addFunction(env, exports, "shiftLeft", shiftLeft);
+		if (status != napi_ok) return nullptr;
+
+		status = addFunction(env, exports, "shiftRight", shiftRight);
+		if (status != napi_ok) return nullptr;
+
+		status = addFunction(env, exports, "eq", eq);
+		if (status != napi_ok) return nullptr;
+
+		status = addFunction(env, exports, "lt", lt);
+		if (status != napi_ok) return nullptr;
+
+		status = addFunction(env, exports, "gt", gt);
+		if (status != napi_ok) return nullptr;
+
+		status = addFunction(env, exports, "lteq", lteq);
+		if (status != napi_ok) return nullptr;
+
+		status = addFunction(env, exports, "gteq", gteq);
 		if (status != napi_ok) return nullptr;
 
 		return exports;
